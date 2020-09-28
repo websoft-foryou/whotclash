@@ -1,0 +1,183 @@
+swagger: "2.0"
+info:
+  title: "WhotClash API Document"
+  description: "This is API document for whotclash card game."
+  version: "1.0.0"
+
+
+tags:
+  - name: "Login"
+    description: ""
+  - name: "Sign Up"
+    description: "Request verification code and check"
+
+servers:
+  - url: http://192.168.0.213/laravel/whotclash/public
+#  - url: http://dev.whotclash
+paths:
+
+  /laravel/whotclash/public/api/login-true:
+    post:
+      tags:
+        - "Login"
+      summary: ""
+      description: ""
+      produces:
+        - "application/json"
+      parameters:
+        - name: "phone"
+          in: "query"
+          description: ""
+          required: true
+          type: "string"
+        - name: "password"
+          in: "query"
+          description: ""
+          required: true
+          type: "string"
+      responses:
+        success:
+          description: "Return user json data with success and user key. \n\n
+            - success key value always is true.\n
+            - user key value has json data with id, name, cash, coins, avatar, phone, is_verified_at, is_blocked_at. \n\n
+            For example: {'success':true, 'user':{'id':5,'name':'maria','coins':0,avatar:null,'phone':'+79585858317','is_verified_at':'2020-07-26T22:08:27.000000Z','is_blocked_at':null}}"
+        failure:
+          description: "Return failure data with success and message key. \n\n
+            - success key value always is false.\n
+            - message key value is string for failure.\n
+              ‐ 'Your phone is not verified yet.' if user phone number is not verified yet.\n
+              ‐ 'Your account has been blocked by admin.' if user was blocked by admin.\n
+              ‐ 'Incorrect phone number or password.' if phone number or password is incorrect. \n
+              ‐ 'The password field is required.' if user is not enter password field.\n
+              ‐ 'The phone number field is required.' if user is not enter phone number field.\n\n
+            For example: {'success':false, 'message':'Incorrect phone number or password.'}"
+
+  /laravel/whotclash/public/api/signup-true:
+    post:
+      tags:
+        - "Sign Up"
+      summary: "Request phone verification code"
+      description: "Request verification code for phone to the twilio server for confirm phone.
+        User receive message that include 5-digit code"
+      produces:
+        - "application/json"
+      parameters:
+        - name: "surname"
+          in: "query"
+          description: ""
+          required: true
+          type: "string"
+        - name: "firstname"
+          in: "query"
+          description: ""
+          required: true
+          type: "string"
+        - name: "birthday"
+          in: "query"
+          description: ""
+          required: true
+          type: "string"
+        - name: "gender"
+          in: "query"
+          description: ""
+          required: true
+          type: "string"
+        - name: "phone"
+          in: "query"
+          description: ""
+          required: true
+          type: "string"
+        - name: "device_type"
+          in: "query"
+          description: ""
+          required: true
+          type: "string"
+        - name: "password"
+          in: "query"
+          description: ""
+          required: true
+          type: "string"
+      responses:
+        success:
+          description: "Return success data with success and message and token key. \n\n
+              - success key value always is true.\n
+              - message key value always is 'The request was processed successfully.'. \n\n
+              For example: {'success':true, 'message':'The request was processed successfully.'}"
+        failure:
+          description: "Return failure data with success and message key. \n\n
+              - success key value always is false.\n
+              - message key value is string for failure.\n
+                ‐ 'Already exist the phone number, please enter another phone number.' if user phone number is already exist.\n
+                ‐ 'Unable to signup into the application, please try again.' if user registration is failure.\n
+                ‐ 'Request failure. Please check your network.' if issue other errors. \n
+                ‐ 'The password field is required.' if user is not enter password field.\n
+                ‐ 'The phone number field is required.' if user is not enter phone number field.\n\n
+              For example: {'success':false, 'message':'Already exist the phone number, please enter another phone number.'}"
+
+  /laravel/whotclash/public/api/resend-verify-code:
+    post:
+      tags:
+        - "Sign Up"
+      summary: "Request phone verification code again"
+      description: "Request verification code again for phone to the twilio server for confirm phone.\n
+        User receive message that include 5-digit code"
+      produces:
+        - "application/json"
+      parameters:
+        - name: "phone"
+          in: "query"
+          description: ""
+          required: true
+          type: "string"
+      responses:
+        success:
+          description: "Return success data with success and message key. \n\n
+                - success key value always is true.\n
+                - message key value always is 'The request was processed successfully.'. \n\n
+                For example: {'success':true, 'message':'The request was processed successfully.'}"
+        failure:
+          description: "Return failure data with success and message key. \n\n
+                - success key value always is false.\n
+                - message key value is string for failure.\n
+                  ‐ 'Unable to access to the database.' if database operation is failure. \n
+                  ‐ 'Request failure. Please check your network.' if issue other errors. \n
+                  ‐ 'The phone number field is required.' if user is not enter phone number field.\n\n
+                For example: {'success':false, 'message':'Request failure. Please check your network.'}"
+
+  /laravel/whotclash/public/api/verify-true:
+    post:
+      tags:
+        - "Sign Up"
+      summary: "Verify phone code"
+      description: "Verify phone code that user enter 5-digit code"
+      produces:
+        - "application/json"
+      parameters:
+        - name: "phone"
+          in: "query"
+          description: ""
+          required: true
+          type: "string"
+        - name: "digits"
+          in: "query"
+          description: "5-digit code that user is receieved to phone."
+          required: true
+          type: "string"
+      responses:
+        success:
+          description: "Return user json data with success and user key. \n\n
+                - success key value always is true.\n
+                - user key value has json data with id, name, cash, coins, avatar, phone, code_requested_at, is_verified_at, is_blocked_at. \n\n
+                For example: {'success':true, 'user':{'id':5,'name':'maria','coins':0,avatar:null,'phone':'+79585858317','is_verified_at':'2020-07-26T22:08:27.000000Z','is_blocked_at':null}}"
+        failure:
+          description: "Return failure data with success and message key. \n\n
+                - success key value always is false.\n
+                - message key value is string for failure.\n
+                  ‐ 'Invalid verification code entered!' if verification code is not incorrect.\n
+                  ‐ 'Valid period is expired!' if valid period is expired (about 10 minutes).\n
+                  ‐ 'Can not get user information, please try signup again' if there is no the user information.\n
+                  ‐ 'Unable to signup into the application, please try again.' if user registration is failure.\n
+                  ‐ 'Request failure. Please check your network.' if issue other errors. \n
+                  ‐ 'The verification code field is required.' if user is not enter verification code field.\n
+                  ‐ 'The phone number field is required.' if user is not enter phone number field.\n\n
+                For example: {'success':false, 'message':'Invalid verification code entered!'}"
