@@ -11,7 +11,7 @@ class BaseController extends Controller
     {
         http_response_code(200);
         if( !empty($data) )
-            echo json_encode( ['success' => true, $key => $data] );
+            echo json_encode( ['success' => true, 'message' => '', $key => $data] );
         else
             echo json_encode( ['success' => true, 'message' => $message]);
 

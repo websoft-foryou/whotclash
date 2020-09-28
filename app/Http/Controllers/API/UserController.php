@@ -10,6 +10,7 @@ use Twilio\Exceptions\RestException;
 use Twilio\Rest\Client;
 use Illuminate\Support\Facades\Validator;
 use Auth;
+use DB;
 
 class UserController extends BaseController
 {
@@ -31,7 +32,7 @@ class UserController extends BaseController
             'firstname' => ['required'],
             'birthday' => ['required'],
             'gender' => ['required'],
-            'phone' => ['required', 'max:15'],
+            'phone' => ['required'],
             'device_type' => ['required'], //ios or android
             'password' => ['required']
         ]);
@@ -40,8 +41,7 @@ class UserController extends BaseController
             $this->response_error($validator->errors()->first(), 406);                              // 406: Not Acceptable
         }
 
-        $phone_number = $request->phone;
-        if (substr($phone_number, 0, 1) != '+') $phone_number = '+' . $phone_number;
+        $phone_number = $this->get_real_phone_number($request->phone);
 
         // check whether phone number already is exists.
         $user = User::select('id')->where( ['phone' => $phone_number])->first();
@@ -70,7 +70,7 @@ class UserController extends BaseController
             ]);
 
             if ($user)
-                $this->response_success('The request was processed successfully.', $token , 'token');
+                $this->response_success('The request was processed successfully.', '' , '');
             else
                 $this->response_error('Unable to signup into the application, please try again.', 406); // 406: Not Acceptable
         }
@@ -82,15 +82,14 @@ class UserController extends BaseController
     public function retry_phone_verify(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'phone' => ['required', 'max:15'],
+            'phone' => ['required'],
         ]);
 
         if ($validator->fails()) {
             $this->response_error($validator->errors()->first(), 406);                              // 406: Not Acceptable
         }
 
-        $phone_number = $request->phone;
-        if (substr($phone_number, 0, 1) != '+') $phone_number = '+' . $phone_number;
+        $phone_number = $this->get_real_phone_number($request->phone);
 
         // Request verificaiton code. If success, user can receive to phone message that includes verification code
         $verify_request_result = $this->request_verify_code($phone_number);
@@ -108,7 +107,7 @@ class UserController extends BaseController
     public function phone_verify(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'phone' => 'required|max:15',
+            'phone' => 'required',
             'digits' => 'required'
         ]);
 
@@ -116,9 +115,8 @@ class UserController extends BaseController
             $this->response_error($validator->errors()->first(), 406);                              // 406: Not Acceptable
         }
 
-        $phone_number = $request->phone;
+        $phone_number = $this->get_real_phone_number($request->phone);
         $verification_code = $request->digits;
-        if (substr($phone_number, 0, 1) != '+') $phone_number = '+' . $phone_number;
 
         // Request whether verification code is valid
         $check_request_result = $this->check_verify_code($phone_number, $verification_code);
@@ -165,27 +163,41 @@ class UserController extends BaseController
 
     public function check_verify_code($phone_number, $verify_code)
     {
-        //$twilio = new Client($this->twilio_sid, $this->twilio_token);
+        if (substr($phone_number, 0, 3) != '+79') {
+            $twilio = new Client($this->twilio_sid, $this->twilio_token);
+        }
         try {
-            /*$verification = $twilio->verify->v2->services($this->twilio_verify_sid)
-                ->verificationChecks
-                ->create($verify_code, array('to' => $phone_number));
+            if (substr($phone_number, 0, 3) != '+79') {
+                $verification = $twilio->verify->v2->services($this->twilio_verify_sid)
+                    ->verificationChecks
+                    ->create($verify_code, array('to' => $phone_number));
 
-            if ($verification->valid)
-                return "success";
+                if ($verification->valid)
+                    return "success";
+                else
+                    return "failure";
+            }
             else
-                return "failure";*/
-            return "success";
+                return "success";
+
         } catch(RestException $e) {
             return $e->getMessage();
         }
 
     }
 
+    public function get_real_phone_number($phone_number)
+    {
+        if (substr($phone_number, 0, 1) == '0') $phone_number = substr($phone_number, 1);
+        if (substr($phone_number, 0, 1) != '+') $phone_number = '+' . $phone_number;
+        if (substr($phone_number, 0, 2) == '+0') $phone_number = '+'. substr($phone_number, 2);
+        return $phone_number;
+    }
+
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'phone' => 'required|max:15',
+            'phone' => 'required',
             'password' => 'required'
         ]);
 
@@ -193,9 +205,8 @@ class UserController extends BaseController
             $this->response_error($validator->errors()->first(), 406);                              // 406: Not Acceptable
         }
 
-        $phone_number = $request->phone;
+        $phone_number = $this->get_real_phone_number($request->phone);
         $password = $request->password;
-        if (substr($phone_number, 0, 1) != '+') $phone_number = '+' . $phone_number;
 
         $user = User::select('id', 'phone', 'name', 'avatar', 'coins', 'cash', 'vouchers', 'password', 'code_requested_at', 'is_verified_at', 'is_blocked_at')->where( ['phone' => $phone_number])->first();
         if( !empty($user) ) {
@@ -210,11 +221,12 @@ class UserController extends BaseController
                 }
             }
             else
-                $this->response_error('Incorrect phone number or password1.', 406);         // 406: Not Acceptable
+                $this->response_error('Incorrect phone number or password.', 406);         // 406: Not Acceptable
 
         }
         else
-        $this->response_error('Incorrect email address or password2.', 406);                // 406: Not Acceptable
+        $this->response_error('Incorrect phone number or password.', 406);                // 406: Not Acceptable
+
 
     }
 
@@ -239,5 +251,158 @@ class UserController extends BaseController
         else {
             $this->response_error('Un Authenticated.', 406);
         }
+    }
+
+    public function add_friend(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id1' => 'required',
+            'user_id2' => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            $this->response_error($validator->errors()->first(), 406);                              // 406: Not Acceptable
+        }
+
+
+        $user = DB::select("SELECT * FROM friends WHERE (user_id1=:user_id1 AND user_id2=:user_id2) OR (user_id1=:user_id3 AND user_id2=:user_id4)",
+            ['user_id1'=>$request->user_id1, 'user_id2'=>$request->user_id2, 'user_id3'=>$request->user_id2, 'user_id4'=>$request->user_id1]);
+
+        if (empty($user)) {
+            DB::table('friends')->insert(['user_id1'=> $request->user_id1, 'user_id2'=> $request->user_id2]);
+
+        }
+        $this->response_success('The user just added as friend successfully.', '' , '');
+//        else {
+//            $this->response_success('The user already added as friend.', '', '');
+//        }
+    }
+
+    public function get_friend(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            $this->response_error($validator->errors()->first(), 406);                              // 406: Not Acceptable
+        }
+
+        $user = DB::select("
+                SELECT * FROM (
+                    SELECT U.* FROM friends f INNER JOIN users U ON f.user_id2=U.id WHERE f.user_id1=:user_id1
+                    UNION
+                    SELECT U.* FROM friends f INNER JOIN users U ON f.user_id1=U.id WHERE f.user_id2=:user_id2
+                ) T", ['user_id1'=>$request->user_id, 'user_id2'=>$request->user_id]);
+
+        $this->response_success('', $user, 'friend');
+    }
+
+    public function add_invite(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'room_code' => 'required',
+            'user_id' => 'required',
+            'friend_list' => 'required',
+            'players' => 'required',
+            'betting_amount' => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            $this->response_error($validator->errors()->first(), 406);                              // 406: Not Acceptable
+        }
+
+        DB::table('invites')->where('user_id', $request->user_id)->delete();
+        $user = DB::select("SELECT * FROM invites WHERE room_code=:room_code", ['room_code'=>$request->room_code]);
+
+        if (empty($user)) {
+            $friend_list = substr($request->friend_list,  0, -1);
+            $friend_array = explode(',', $friend_list);
+            foreach($friend_array as $friend_id) {
+                $already_exist = DB::table('invites')->where('friend_id', $friend_id)->where('accept_flag', '')->first();
+                if (empty($already_exist))
+                    DB::table('invites')->insert(['room_code'=> $request->room_code, 'user_id'=> $request->user_id, 'friend_id'=>$friend_id, 'players'=>$request->players, 'betting_amount'=>$request->betting_amount]);
+            }
+            $this->response_success('Your request is processed successfully.', '' , '');
+        }
+        else {
+            $this->response_success('Someone is using the room number.', '', '');
+        }
+    }
+
+    public function get_invite(Request $request)
+    {
+        \Log::info('MMMM');
+        \Log::info($request->friend_id);
+
+        $validator = Validator::make($request->all(), [
+            'friend_id' => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            $this->response_error($validator->errors()->first(), 406);                              // 406: Not Acceptable
+        }
+
+        $user = DB::table("invites")->join('users', 'invites.user_id', '=', 'users.id')
+            ->select('invites.id', 'users.name as room_creator', 'invites.room_code', 'invites.players', 'invites.betting_amount')
+            ->where('invites.friend_id', $request->friend_id)->where('invites.accept_flag', '')->first();
+        if (!empty($user))
+            DB::table('invites')->where('id', $user->id)->update(['accept_flag'=>'showed']);
+        $this->response_success('no invite data', $user, 'friend');
+    }
+
+    public function accept_invite(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'room_code' => 'required',
+            'friend_id' => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            $this->response_error($validator->errors()->first(), 406);                              // 406: Not Acceptable
+        }
+
+        DB::table('invites')->where(['room_code'=>$request->room_code, 'friend_id'=> $request->friend_id])->update(['accept_flag'=>'accepted']);
+        $this->response_success('Accepted successfully.', '', '');
+    }
+
+    public function remove_invite(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'room_code' => 'required',
+            'friend_id' => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            $this->response_error($validator->errors()->first(), 406);                              // 406: Not Acceptable
+        }
+
+        DB::table('invites')->where(['room_code'=>$request->room_code, 'friend_id'=> $request->friend_id])->delete();
+        $this->response_success('Removed invitation successfully.', '', '');
+    }
+
+    public function remove_invite_room(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'room_code' => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            $this->response_error($validator->errors()->first(), 406);                              // 406: Not Acceptable
+        }
+
+        DB::table('invites')->where(['room_code'=>$request->room_code])->delete();
+        $this->response_success('Removed inviationt room successfully.', '', '');
+    }
+
+    public function checkBlockStatus(Request $request){
+        $user = auth()->user();
+
+        if($user->block == '1'){
+            $response = ["success" => true,'is_block' => 1];
+        }else{
+            $response = ["success" => true,'is_block' => 0];
+        }
+        return response()->json($response);
     }
 }
