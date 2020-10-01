@@ -44,7 +44,7 @@ class UserController extends BaseController
         $phone_number = $this->get_real_phone_number($request->phone);
 
         // check whether phone number already is exists.
-        $user = User::select('id')->where( ['phone' => $phone_number])->first();
+        $user = User::select('id')->where( ['phone' => $phone_number, 'remove'=>0])->first();
         if ( ! empty($user)) {
             $this->response_error('Already exist the phone number, please enter another phone number.', 406); // 406: Not Acceptable
         }
@@ -208,7 +208,8 @@ class UserController extends BaseController
         $phone_number = $this->get_real_phone_number($request->phone);
         $password = $request->password;
 
-        $user = User::select('id', 'phone', 'name', 'avatar', 'coins', 'cash', 'vouchers', 'password', 'code_requested_at', 'is_verified_at', 'is_blocked_at')->where( ['phone' => $phone_number])->first();
+        $user = User::select('id', 'phone', 'name', 'avatar', 'coins', 'cash', 'vouchers', 'password', 'code_requested_at', 'is_verified_at', 'is_blocked_at')
+            ->where( ['phone' => $phone_number, 'remove'=>0])->first();
         if( !empty($user) ) {
             if (Hash::check($password, $user->password)) {
                 if($user->is_blocked_at != '' && $user->is_blocked_at != null)
@@ -265,17 +266,14 @@ class UserController extends BaseController
         }
 
 
+        // check if the users is already add
         $user = DB::select("SELECT * FROM friends WHERE (user_id1=:user_id1 AND user_id2=:user_id2) OR (user_id1=:user_id3 AND user_id2=:user_id4)",
             ['user_id1'=>$request->user_id1, 'user_id2'=>$request->user_id2, 'user_id3'=>$request->user_id2, 'user_id4'=>$request->user_id1]);
 
         if (empty($user)) {
             DB::table('friends')->insert(['user_id1'=> $request->user_id1, 'user_id2'=> $request->user_id2]);
-
         }
         $this->response_success('The user just added as friend successfully.', '' , '');
-//        else {
-//            $this->response_success('The user already added as friend.', '', '');
-//        }
     }
 
     public function get_friend(Request $request)
@@ -290,10 +288,10 @@ class UserController extends BaseController
 
         $user = DB::select("
                 SELECT * FROM (
-                    SELECT U.* FROM friends f INNER JOIN users U ON f.user_id2=U.id WHERE f.user_id1=:user_id1
+                    SELECT U.* FROM friends f INNER JOIN (SELECT * FORM users WHERE remove=0) U ON f.user_id2=U.id WHERE f.user_id1=:user_id1
                     UNION
-                    SELECT U.* FROM friends f INNER JOIN users U ON f.user_id1=U.id WHERE f.user_id2=:user_id2
-                ) T", ['user_id1'=>$request->user_id, 'user_id2'=>$request->user_id]);
+                    SELECT U.* FROM friends f INNER JOIN (SELECT * FORM users WHERE remove=0) U ON f.user_id1=U.id WHERE f.user_id2=:user_id2
+                ) T ", ['user_id1'=>$request->user_id, 'user_id2'=>$request->user_id]);
 
         $this->response_success('', $user, 'friend');
     }
@@ -345,6 +343,7 @@ class UserController extends BaseController
 
         $user = DB::table("invites")->join('users', 'invites.user_id', '=', 'users.id')
             ->select('invites.id', 'users.name as room_creator', 'invites.room_code', 'invites.players', 'invites.betting_amount')
+            ->where('users.remove', 0)
             ->where('invites.friend_id', $request->friend_id)->where('invites.accept_flag', '')->first();
         if (!empty($user))
             DB::table('invites')->where('id', $user->id)->update(['accept_flag'=>'showed']);
