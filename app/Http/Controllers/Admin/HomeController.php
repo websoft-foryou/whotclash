@@ -56,7 +56,7 @@ class HomeController extends Controller
         $email = $request->email;
         $password = $request->password;
 
-        $admin_user = DB::table('users')->where(['email'=>$email])->first();
+        $admin_user = DB::table('admins')->where(['email'=>$email])->first();
 //        if (Auth::attempt(['email' => $email, 'password' => $password])) {
         if (empty($admin_user) || ! Hash::check($password, $admin_user->password)) {
             return back()->with('error','The email or password is wrong');

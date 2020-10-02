@@ -36,14 +36,14 @@ class ProfileController extends Controller
             return back()->withErrors($validator)->withInput();
         }
 
-        $user_data = DB::table('users')->where('email', 'admin@gmail.com')->first();
+        $user_data = DB::table('admins')->where('email', 'admin@gmail.com')->first();
         if (empty($user_data))
             return back()->with('error','The admin user is not exist. Admin email address have to adminn@gmail.com');
         else {
             if (! Hash::check($request->current_password, $user_data->password))
                 return back()->with('error','The current password is not correct!');
             else {
-                DB::table('users')->where('email', 'admin@gmail.com')->update(['password'=>Hash::make($request->new_password)]);
+                DB::table('admins')->where('email', 'admin@gmail.com')->update(['password'=>Hash::make($request->new_password)]);
                 return back()->with('success','Saved successfully!');
             }
         }
