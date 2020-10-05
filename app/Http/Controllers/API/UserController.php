@@ -288,9 +288,9 @@ class UserController extends BaseController
 
         $user = DB::select("
                 SELECT * FROM (
-                    SELECT U.* FROM friends f INNER JOIN (SELECT * FORM users WHERE remove=0) U ON f.user_id2=U.id WHERE f.user_id1=:user_id1
+                    SELECT U.* FROM friends f INNER JOIN (SELECT * FROM users WHERE remove=0) U ON f.user_id2=U.id WHERE f.user_id1=:user_id1
                     UNION
-                    SELECT U.* FROM friends f INNER JOIN (SELECT * FORM users WHERE remove=0) U ON f.user_id1=U.id WHERE f.user_id2=:user_id2
+                    SELECT U.* FROM friends f INNER JOIN (SELECT * FROM users WHERE remove=0) U ON f.user_id1=U.id WHERE f.user_id2=:user_id2
                 ) T ", ['user_id1'=>$request->user_id, 'user_id2'=>$request->user_id]);
 
         $this->response_success('', $user, 'friend');
