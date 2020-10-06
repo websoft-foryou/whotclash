@@ -25,6 +25,8 @@ Route::post('get-invite', 'API\UserController@get_invite');
 Route::post('accept-invite', 'API\UserController@accept_invite');
 Route::post('remove-invite', 'API\UserController@remove_invite');
 Route::post('remove-invite-room', 'API\UserController@remove_invite_room');
+Route::post('get-user-list', 'API\UserController@get_user_list');
+
 //Route::get('/home', 'HomeController@index')->name('home');
 
 

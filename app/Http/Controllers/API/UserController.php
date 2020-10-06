@@ -288,9 +288,9 @@ class UserController extends BaseController
 
         $user = DB::select("
                 SELECT * FROM (
-                    SELECT U.* FROM friends f INNER JOIN (SELECT * FROM users WHERE remove=0) U ON f.user_id2=U.id WHERE f.user_id1=:user_id1
+                    SELECT U.* FROM friends f INNER JOIN (SELECT * FROM users WHERE isverified=1 AND remove=0 AND (is_blocked_at IS NULL OR is_blocked_at='')) U ON f.user_id2=U.id WHERE f.user_id1=:user_id1
                     UNION
-                    SELECT U.* FROM friends f INNER JOIN (SELECT * FROM users WHERE remove=0) U ON f.user_id1=U.id WHERE f.user_id2=:user_id2
+                    SELECT U.* FROM friends f INNER JOIN (SELECT * FROM users WHERE isverified=1 AND remove=0 AND (is_blocked_at IS NULL OR is_blocked_at='')) U ON f.user_id1=U.id WHERE f.user_id2=:user_id2
                 ) T ", ['user_id1'=>$request->user_id, 'user_id2'=>$request->user_id]);
 
         $this->response_success('', $user, 'friend');
@@ -330,9 +330,6 @@ class UserController extends BaseController
 
     public function get_invite(Request $request)
     {
-        \Log::info('MMMM');
-        \Log::info($request->friend_id);
-
         $validator = Validator::make($request->all(), [
             'friend_id' => 'required'
         ]);
@@ -344,7 +341,13 @@ class UserController extends BaseController
         $user = DB::table("invites")->join('users', 'invites.user_id', '=', 'users.id')
             ->select('invites.id', 'users.name as room_creator', 'invites.room_code', 'invites.players', 'invites.betting_amount')
             ->where('users.remove', 0)
-            ->where('invites.friend_id', $request->friend_id)->where('invites.accept_flag', '')->first();
+            ->where('users.isverified', 1)
+            ->where(function ($query) {
+                $query->whereNull('users.is_blocked_at')
+                    ->orWhere('users.is_blocked_at', '=', '');
+            })
+            ->where('invites.friend_id', $request->friend_id)
+            ->where('invites.accept_flag', '')->first();
         if (!empty($user))
             DB::table('invites')->where('id', $user->id)->update(['accept_flag'=>'showed']);
         $this->response_success('no invite data', $user, 'friend');
@@ -392,6 +395,19 @@ class UserController extends BaseController
 
         DB::table('invites')->where(['room_code'=>$request->room_code])->delete();
         $this->response_success('Removed inviationt room successfully.', '', '');
+    }
+
+    public function get_user_list(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            $this->response_error($validator->errors()->first(), 406);                              // 406: Not Acceptable
+        }
+        $user = DB::select("SELECT * FROM users WHERE isverified=1 AND remove=0 AND (is_blocked_at IS NULL OR is_blocked_at='') AND id != :user_id ORDER BY name", ['user_id'=>$request->user_id]);
+        $this->response_success('no invite data', $user, 'user');
     }
 
     public function checkBlockStatus(Request $request){
