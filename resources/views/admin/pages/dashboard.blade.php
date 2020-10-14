@@ -33,7 +33,7 @@
             </div>
             <div class="kt-iconbox__desc">
                 <h3 class="kt-iconbox__title">
-                    <a class="kt-link" href="{{route('open-gamehistory-page')}}">Game History</a>
+                    <a class="kt-link" href="{{route('open-playhistory-page')}}">Game History</a>
                 </h3>
                 <div class="kt-iconbox__content">
                     Show history of Game

@@ -106,11 +106,35 @@
                       <span class="kt-menu__link-text">User Management</span>
                   </a>
                 </li>
-                <li class="kt-menu__item {{ \Request::is('open-gamehistory-page') ? 'kt-menu__item--active' : '' }}" aria-haspopup="true">
-                  <a href="{{route('open-gamehistory-page')}}" class="kt-menu__link ">
-                      <span class="kt-menu__link-icon"><i class="fa fa-gamepad"></i></span>
-                      <span class="kt-menu__link-text">Game History</span>
+                <li class="kt-menu__item {{ \Request::is('admin/coin-management') ? 'kt-menu__item--active' : '' }}" aria-haspopup="true">
+                  <a href="{{route('open-coinmanagement-page')}}" class="kt-menu__link ">
+                      <span class="kt-menu__link-icon"><i class="fa fa-coins"></i></span>
+                      <span class="kt-menu__link-text">Coin Management</span>
                   </a>
+                </li>
+                <li class="kt-menu__item kt-menu__item--submenu {{ \Request::is('admin/play-history') ? 'kt-menu__item--open kt-menu__item--here' : '' }}" aria-haspopup="true" data-ktmenu-submenu-toggle="hover">
+                  <a href="javascript:;" class="kt-menu__link kt-menu__toggle">
+                    <i class="kt-menu__link-icon fa fa-gamepad"></i>
+                    <span class="kt-menu__link-text">Game History</span>
+                    <i class="kt-menu__ver-arrow la la-angle-right"></i>
+                  </a>
+                  <div class="kt-menu__submenu "><span class="kt-menu__arrow"></span>
+                    <ul class="kt-menu__subnav">
+                        <li class="kt-menu__item  kt-menu__item--parent" aria-haspopup="true"><span class="kt-menu__link"><span class="kt-menu__link-text">Subheaders</span></span></li>
+                        <li class="kt-menu__item {{ \Request::is('admin/play-history') ? 'kt-menu__item--active' : '' }}">
+                            <a href="{{route('open-playhistory-page')}}" class="kt-menu__link">
+                                <i class="kt-menu__link-bullet kt-menu__link-bullet--dot"><span></span></i>
+                                <span class="kt-menu__link-text">Play History</span>
+                            </a>
+                        </li>
+                        <li class="kt-menu__item {{ \Request::is('admin/transaction-history') ? 'kt-menu__item--active' : '' }}">
+                            <a href="{{route('open-transaction-history-page')}}" class="kt-menu__link">
+                                <i class="kt-menu__link-bullet kt-menu__link-bullet--dot"><span></span></i>
+                                <span class="kt-menu__link-text">Transaction History</span>
+                            </a>
+                        </li>
+                    </ul>
+                  </div>
                 </li>
                 <li class="kt-menu__item {{ \Request::is('open-change-password-page') ? 'kt-menu__item--active' : '' }}" aria-haspopup="true">
                   <a href="{{route('open-change-password-page')}}" class="kt-menu__link ">

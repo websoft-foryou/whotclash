@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Twilio\Exceptions\RestException;
@@ -11,6 +10,9 @@ use Twilio\Rest\Client;
 use Illuminate\Support\Facades\Validator;
 use Auth;
 use DB;
+
+use App\User;
+use App\PlayGame;
 
 class UserController extends BaseController
 {
@@ -218,6 +220,19 @@ class UserController extends BaseController
                     $this->response_error("Your phone is not verified yet.", 401);          // 401: Unauthorized
                 else {
                     $user->access_token = $user->createToken('WhotClash')->accessToken;
+
+                    $login_data = DB::table("user_logins")->where('user_id', $user->id)->first();
+                    if (empty($login_data))
+                        DB::table("user_logins")->insert(['user_id'=>$user->id, 'login_at'=>date('Y-m-d H:i:s'), 'is_online'=>1]);
+                    else
+                        DB::table("user_logins")->where('user_id', $user->id)->update(['login_at'=>date('Y-m-d H:i:s'), 'is_online'=>1]);
+
+                    $user_data = DB::table("user_logins")->where('user_id', '!=', $user->id)->where('is_online', 1)->get();
+                    foreach($user_data as $u) {
+                        if (abs(strtotime(date('Y-m-d H:i:s')) - strtotime($u->login_at)) > 15)
+                            DB::table("user_logins")->where('user_id', $u->user_id)->update(['is_online'=> 0]);
+                    }
+
                     $this->response_success('success', $user, 'user');
                 }
             }
@@ -410,7 +425,7 @@ class UserController extends BaseController
         $this->response_success('no invite data', $user, 'user');
     }
 
-    public function checkBlockStatus(Request $request){
+    public function check_block_status(Request $request){
         $user = auth()->user();
 
         if($user->block == '1'){
@@ -419,5 +434,126 @@ class UserController extends BaseController
             $response = ["success" => true,'is_block' => 0];
         }
         return response()->json($response);
+    }
+
+    public function update_coins(Request $request){
+        //Made Edits
+        $user_id = Auth::id();
+        $validator = Validator::make($request->all(),[
+            "cash"	=>	"required"
+        ]);
+
+        if($validator->fails()){
+            return response()->json(["message" => $validator->errors()->first()],406);
+        }
+        $flag = 0;
+        $gameId 	= $request->input('game_id');
+        $gameStatus = $request->input('game_status');
+        $cash 		= $request->input('cash');
+
+        if ($gameId != '' || $gameId != null) {
+            $gameData = PlayGame::find($gameId);
+            $stageUsers = [];
+
+            if ($gameData != null) {
+                if ($gameData->user_first) $stageUsers[] = $gameData->user_first->id;
+                if ($gameData->user_second) $stageUsers[] = $gameData->user_second->id;
+                if ($gameData->user_third) $stageUsers[] = $gameData->user_third->id;
+                if ($gameData->user_fourth) $stageUsers[] = $gameData->user_fourth->id;
+
+                if (in_array($user_id, $stageUsers)) {
+                    switch ($gameStatus) {
+                        case 'deal':
+                            if (abs($cash) == $gameData->bet_amount) {
+                                $flag = 1;
+                            }
+                            break;
+                        case 'draw':
+                            if ($cash == $gameData->bet_amount) {
+                                $flag = 1;
+                            }
+                            break;
+                        case 'win':
+                            if ($cash < $gameData->bet_amount * count($stageUsers)) {
+                                $flag = 1;
+                            }
+                            break;
+
+                        default:
+                            $flag = 0;
+                            break;
+                    }
+                }
+            }
+        }
+
+
+        if ($flag == 0) {
+            //that user insert log table
+            return;
+        }
+
+        $user = User::find($user_id);
+        if($request->cash < 0)
+        {
+            $newreq = 0 - $request->cash;
+            if($user->coins >= $newreq)
+            {
+                $user->coins += $request->cash;
+            }
+            else
+            {
+                $remaining_debit = $request->cash + $user->coins;
+                $user->coins = 0;
+                $user->cash += $remaining_debit;
+            }
+        }
+        else
+        {
+            $user->cash += $request->cash;
+        }
+
+        if($user->save()){
+            return response()->json(["message" => "Coins updated successfully"]);
+        }else {
+            return response()->json(["message" => "Unable to proceed your request, please try later"],400);
+        }
+    }
+
+    public function get_coins(){
+        $coins = User::find(Auth::id())->coins;
+        $cash = User::find(Auth::id())->cash;
+
+        $login_data = DB::table("user_logins")->where('user_id', Auth::id())->first();
+        if (empty($login_data))
+            DB::table("user_logins")->insert(['user_id'=>Auth::id(), 'login_at'=>date('Y-m-d H:i:s'), 'is_online'=>1]);
+        else
+            DB::table("user_logins")->where('user_id', Auth::id())->update(['login_at'=>date('Y-m-d H:i:s'), 'is_online'=>1]);
+
+        $user_data = DB::table("user_logins")->where('user_id', '!=', Auth::id())->where('is_online', 1)->get();
+        foreach($user_data as $user) {
+            if (abs(strtotime(date('Y-m-d H:i:s')) - strtotime($user->login_at)) > 15)
+                DB::table("user_logins")->where('user_id', $user->user_id)->update(['is_online'=> 0]);
+        }
+
+        return response()->json(["message" => "Coins get successfully","coin" => $coins, "cash" => $cash]);
+    }
+
+    public function get_login_user()
+    {
+        $login_users = DB::table("user_logins")->select('user_id')->where('is_online', 1)->get();
+        $this->response_success('no login users', $login_users, 'user');
+    }
+
+    public function logout_true()
+    {
+        DB::table("user_logins")->where('user_id', Auth::id())->update(['is_online'=> 0]);
+        $user_data = DB::table("user_logins")->where('user_id', '!=', Auth::id())->where('is_online', 1)->get();
+        foreach($user_data as $user) {
+            if (abs(strtotime(date('Y-m-d H:i:s')) - strtotime($user->login_at)) > 15)
+                DB::table("user_logins")->where('user_id', $user->user_id)->update(['is_online'=> 0]);
+        }
+
+        $this->response_success('Your request is processed successfully.', '' , '');
     }
 }

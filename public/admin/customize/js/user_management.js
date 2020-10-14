@@ -7,7 +7,6 @@ jQuery(document).ready(function () {
         var row_index = $(this).attr('row-index')- 1;
         var row_data = data_table.row(row_index).data();
 
-        console.log(row_data);
         $('#user_name').val(row_data[1]);
         if (row_data[2] == 'male' || row_data[2] == 'Male') {
             $('#gender_male').prop('checked', true);
@@ -56,4 +55,5 @@ jQuery(document).ready(function () {
         $('#main-form').attr('action', $('#history_url').val());
         $('#main-form').submit();
     });
+
 });

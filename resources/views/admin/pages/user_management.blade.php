@@ -32,6 +32,7 @@
                             <th>Birthday</th>
                             <th>Phone</th>
                             <th>Status</th>
+                            <th>Registe Date</th>
                             <th>Action</th>
                         </tr>
                         </thead>
@@ -45,13 +46,14 @@
                                 <td>{{ $user->birthday }}</td>
                                 <td>{{ $user->phone }}</td>
                                 <td>{!! $user->block == 1 ? "<span class='kt-badge kt-badge--danger kt-badge--inline kt-badge--pill'>Blocked</span>" : "<span class='kt-badge kt-badge--success kt-badge--inline kt-badge--pill'>Normal</span>" !!}</td>
+                                <td>{{ substr($user->created_at, 0, 10) }}</td>
                                 <td>
                                     <span class="dropdown">
                                         <a href="#" class="btn btn-sm btn-clean btn-icon btn-icon-md" data-toggle="dropdown" aria-expanded="true" title="actions">
                                           <i class="la la-ellipsis-h"></i>
                                         </a>
                                         <div class="dropdown-menu dropdown-menu-right">
-                                            <a class="dropdown-item history" href="javascript:;" data-id="{{ $user->id }}" row-index="{{ ($index - 1) }}" title="Game History"><i class="flaticon-statistics"></i>Gmae History</a>
+                                            <a class="dropdown-item history" href="javascript:;" data-id="{{ $user->id }}" row-index="{{ ($index - 1) }}" title="Game History"><i class="flaticon-statistics"></i>Game History</a>
                                             <a class="dropdown-item edit" href="javascript:;" data-id="{{ $user->id }}" row-index="{{ $index - 1 }}" title="Edit User"><i class="flaticon-edit"></i>Edit User</a>
                                             <a class="dropdown-item block" href="javascript:;" data-id="{{ $user->id }}" row-index="{{ $index - 1 }}" title="Block User"><i class="flaticon-warning"></i>Block User</a>
                                         </div>
@@ -60,6 +62,7 @@
                                         <i class="la la-trash"></i>
                                     </a>
                                 </td>
+
                             </tr>
                             @endforeach
                         </tbody>
