@@ -223,7 +223,7 @@ class UserController extends BaseController
 
                     $login_data = DB::table("user_logins")->where('user_id', $user->id)->first();
                     if (!empty($login_data) && $login_data->is_online == 1) {
-                        $this->response_error("You already logged in.", 401);          // 401: Unauthorized
+                        $this->response_error("You already logged in.", 406);          // 401: Unauthorized
                     }
                     else {
                         if (empty($login_data))
