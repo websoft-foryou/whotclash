@@ -222,18 +222,24 @@ class UserController extends BaseController
                     $user->access_token = $user->createToken('WhotClash')->accessToken;
 
                     $login_data = DB::table("user_logins")->where('user_id', $user->id)->first();
-                    if (empty($login_data))
-                        DB::table("user_logins")->insert(['user_id'=>$user->id, 'login_at'=>date('Y-m-d H:i:s'), 'is_online'=>1]);
-                    else
-                        DB::table("user_logins")->where('user_id', $user->id)->update(['login_at'=>date('Y-m-d H:i:s'), 'is_online'=>1]);
+                    if (!empty($login_data) && $login_data->is_online == 1) {
+                        $this->response_error("You already logged in.", 401);          // 401: Unauthorized
+                    }
+                    else {
+                        if (empty($login_data))
+                            DB::table("user_logins")->insert(['user_id'=>$user->id, 'login_at'=>date('Y-m-d H:i:s'), 'is_online'=>1]);
+                        else
+                            DB::table("user_logins")->where('user_id', $user->id)->update(['login_at'=>date('Y-m-d H:i:s'), 'is_online'=>1]);
 
-                    $user_data = DB::table("user_logins")->where('user_id', '!=', $user->id)->where('is_online', 1)->get();
-                    foreach($user_data as $u) {
-                        if (abs(strtotime(date('Y-m-d H:i:s')) - strtotime($u->login_at)) > 15)
-                            DB::table("user_logins")->where('user_id', $u->user_id)->update(['is_online'=> 0]);
+                        $user_data = DB::table("user_logins")->where('user_id', '!=', $user->id)->where('is_online', 1)->get();
+                        foreach($user_data as $u) {
+                            if (abs(strtotime(date('Y-m-d H:i:s')) - strtotime($u->login_at)) > 15)
+                                DB::table("user_logins")->where('user_id', $u->user_id)->update(['is_online'=> 0]);
+                        }
+                        $this->response_success('success', $user, 'user');
                     }
 
-                    $this->response_success('success', $user, 'user');
+                    
                 }
             }
             else
