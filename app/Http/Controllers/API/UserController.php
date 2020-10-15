@@ -528,9 +528,9 @@ class UserController extends BaseController
 
         $login_data = DB::table("user_logins")->where('user_id', Auth::id())->first();
         if (empty($login_data))
-            DB::insert("INSERT user_logins SET user_id='" . $user->id . "', login_at=NOW(), is_online=1");
+            DB::insert("INSERT user_logins SET user_id='" . Auth::id() . "', login_at=NOW(), is_online=1");
         else
-            DB::update("UPDATE user_logins SET login_at=NOW(), is_online=1 WHERE user_id='" . $user->id . "'");
+            DB::update("UPDATE user_logins SET login_at=NOW(), is_online=1 WHERE user_id='" . Auth::id() . "'");
 
         DB::update("UPDATE user_logins SET is_online=0 WHERE is_online=1 AND timestampdiff(SECOND, login_at, NOW()) > 15");
         return response()->json(["message" => "Coins get successfully","coin" => $coins, "cash" => $cash]);
