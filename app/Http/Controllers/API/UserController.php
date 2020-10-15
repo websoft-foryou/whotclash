@@ -219,23 +219,19 @@ class UserController extends BaseController
                 else if ($user->is_verified_at == '' || $user->is_verified_at == null)
                     $this->response_error("Your phone is not verified yet.", 401);          // 401: Unauthorized
                 else {
-                    $user->access_token = $user->createToken('WhotClash')->accessToken;
-
                     $login_data = DB::table("user_logins")->where('user_id', $user->id)->first();
                     if (!empty($login_data) && $login_data->is_online == 1) {
                         $this->response_error("You already logged in.", 406);          // 401: Unauthorized
                     }
                     else {
                         if (empty($login_data))
-                            DB::table("user_logins")->insert(['user_id'=>$user->id, 'login_at'=>date('Y-m-d H:i:s'), 'is_online'=>1]);
+                            DB::insert("INSERT user_logins SET user_id='" . $user->id . "', login_at=NOW(), is_online=1");
                         else
-                            DB::table("user_logins")->where('user_id', $user->id)->update(['login_at'=>date('Y-m-d H:i:s'), 'is_online'=>1]);
+                            DB::update("UPDATE user_logins SET login_at=NOW(), is_online=1 WHERE user_id='" . $user->id . "'");
 
-                        $user_data = DB::table("user_logins")->where('user_id', '!=', $user->id)->where('is_online', 1)->get();
-                        foreach($user_data as $u) {
-                            if (abs(strtotime(date('Y-m-d H:i:s')) - strtotime($u->login_at)) > 15)
-                                DB::table("user_logins")->where('user_id', $u->user_id)->update(['is_online'=> 0]);
-                        }
+                        DB::update("UPDATE user_logins SET is_online=0 WHERE is_online=1 AND timestampdiff(SECOND, login_at, NOW()) > 15");
+
+                        $user->access_token = $user->createToken('WhotClash')->accessToken;
                         $this->response_success('success', $user, 'user');
                     }
 
@@ -532,16 +528,11 @@ class UserController extends BaseController
 
         $login_data = DB::table("user_logins")->where('user_id', Auth::id())->first();
         if (empty($login_data))
-            DB::table("user_logins")->insert(['user_id'=>Auth::id(), 'login_at'=>date('Y-m-d H:i:s'), 'is_online'=>1]);
+            DB::insert("INSERT user_logins SET user_id='" . $user->id . "', login_at=NOW(), is_online=1");
         else
-            DB::table("user_logins")->where('user_id', Auth::id())->update(['login_at'=>date('Y-m-d H:i:s'), 'is_online'=>1]);
+            DB::update("UPDATE user_logins SET login_at=NOW(), is_online=1 WHERE user_id='" . $user->id . "'");
 
-        $user_data = DB::table("user_logins")->where('user_id', '!=', Auth::id())->where('is_online', 1)->get();
-        foreach($user_data as $user) {
-            if (abs(strtotime(date('Y-m-d H:i:s')) - strtotime($user->login_at)) > 15)
-                DB::table("user_logins")->where('user_id', $user->user_id)->update(['is_online'=> 0]);
-        }
-
+        DB::update("UPDATE user_logins SET is_online=0 WHERE is_online=1 AND timestampdiff(SECOND, login_at, NOW()) > 15");
         return response()->json(["message" => "Coins get successfully","coin" => $coins, "cash" => $cash]);
     }
 
@@ -554,11 +545,7 @@ class UserController extends BaseController
     public function logout_true()
     {
         DB::table("user_logins")->where('user_id', Auth::id())->update(['is_online'=> 0]);
-        $user_data = DB::table("user_logins")->where('user_id', '!=', Auth::id())->where('is_online', 1)->get();
-        foreach($user_data as $user) {
-            if (abs(strtotime(date('Y-m-d H:i:s')) - strtotime($user->login_at)) > 15)
-                DB::table("user_logins")->where('user_id', $user->user_id)->update(['is_online'=> 0]);
-        }
+        DB::update("UPDATE user_logins SET is_online=0 WHERE is_online=1 AND timestampdiff(SECOND, login_at, NOW()) > 15");
 
         $this->response_success('Your request is processed successfully.', '' , '');
     }
