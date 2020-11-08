@@ -22,9 +22,10 @@ class UserController extends BaseController
 
     public function __construct()
     {
-        $this->twilio_token = getenv("TWILIO_AUTH_TOKEN");
-        $this->twilio_sid = getenv("TWILIO_SID");
-        $this->twilio_verify_sid = getenv("TWILIO_VERIFY_SID");
+        $this->twilio_token = env("TWILIO_AUTH_TOKEN");
+        $this->twilio_sid = env("TWILIO_SID");
+        $this->twilio_verify_sid = env("TWILIO_VERIFY_SID");
+
     }
 
     public function request_phone_verify(Request $request)
@@ -80,6 +81,30 @@ class UserController extends BaseController
             $this->response_error('Request failure. Please check your network.', 599);       // 599: Network connect timeout error
         }
     }
+
+    public function request_phone_verify_forgot_password(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'phone' => 'required',
+        ]);
+        $phone_number = $this->get_real_phone_number($request->phone);
+        $user = User::select('id')->where( ['phone' => $phone_number, 'remove'=>0])->first();
+        if ( empty($user)) {
+            $this->response_error('The phone number was not registered.', 406); // 406: Not Acceptable
+        }
+
+        $verify_request_result = $this->request_verify_code($phone_number);
+        if ($verify_request_result == 'success') {
+            $user_update = tap(User::where('phone', $phone_number)->update( ['code_requested_at' => date('Y-m-d H:i:s')] ));
+            if ($user_update)
+                $this->response_success('The request was processed successfully.', '', '');
+            else
+                $this->response_error('Unable to verify your phone by unknown reason, please try again.', 406); // 406: Not Acceptable
+        }
+        else
+            $this->response_error('Request failure. Please check your network.', 599);       // 599: Network connect timeout error
+    }
+
 
     public function retry_phone_verify(Request $request)
     {
@@ -142,6 +167,51 @@ class UserController extends BaseController
                 $this->response_success('Your phone was verified successfully.', $user, 'user');
             else
                 $this->response_error('Unable to signup into the application, please try again.', 406); // 406: Not Acceptable
+        }
+        elseif ($check_request_result != 'success')
+            $this->response_error('Invalid verification code entered!', 406);               // 406: Not Acceptable
+        else
+            $this->response_error('Request failure. Please check your network', 599);       // 599: Network connect timeout error
+    }
+
+    public function phone_verify_forgot_password(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'phone' => 'required',
+            'new_password' => 'required',
+            'digits' => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            $this->response_error($validator->errors()->first(), 406);                              // 406: Not Acceptable
+        }
+
+        $phone_number = $this->get_real_phone_number($request->phone);
+        $verification_code = $request->digits;
+
+        // Request whether verification code is valid
+        $check_request_result = $this->check_verify_code($phone_number, $verification_code);
+
+        if ($check_request_result == 'success') {
+
+            $encrypt_password = Hash::make($request->new_password);
+            $user = User::select('id', 'phone', 'name', 'avatar', 'coins', 'cash', 'vouchers', 'password', 'code_requested_at', 'is_verified_at', 'is_blocked_at')->where( ['phone' => $phone_number])->first();
+
+            if ( empty($user) )
+                $this->response_success('The phone number was not registered, please try another phone number again', '', '');
+
+            $from = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $user->code_requested_at);
+            $to = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', date('Y-m-d H:i:s'));
+
+            $diff_in_minutes = $to->diffInMinutes($from);
+            if ($diff_in_minutes > 10)
+                $this->response_error('Valid period is expired!', 406); // 406: Not Acceptable
+
+            $user_update = tap(User::where('phone', $phone_number)->update( ['password' => $encrypt_password] ));
+            if ($user_update)
+                $this->response_success('The password was changed successfully.', '', '');
+            else
+                $this->response_error('Unable to change password by unknown reason, please try again.', 406); // 406: Not Acceptable
         }
         elseif ($check_request_result != 'success')
             $this->response_error('Invalid verification code entered!', 406);               // 406: Not Acceptable
@@ -235,7 +305,7 @@ class UserController extends BaseController
                         $this->response_success('success', $user, 'user');
                     }
 
-                    
+
                 }
             }
             else

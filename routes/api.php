@@ -27,7 +27,8 @@ Route::post('remove-invite', 'API\UserController@remove_invite');
 Route::post('remove-invite-room', 'API\UserController@remove_invite_room');
 Route::post('get-user-list', 'API\UserController@get_user_list');
 Route::post('get-login-user-list','API\UserController@get_login_user');
-
+Route::post('forgot-password', 'API\UserController@request_phone_verify_forgot_password');
+Route::post('reset-password', 'API\UserController@phone_verify_forgot_password');
 
 //Route::get('/home', 'HomeController@index')->name('home');
 
